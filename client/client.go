@@ -1,4 +1,4 @@
-package desafioclientserverapi
+package main
 
 import (
 	"context"
