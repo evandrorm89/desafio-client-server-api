@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/evandrorm89/desafio-client-server-api/common"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Cambio struct {
@@ -50,11 +54,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(cambio)
+	response := common.CambioResponse{
+		Cambio: cambio.Usdbr.Bid,
+	}
+
+	data, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("Erro ao serializar o json: %v", err)
 		http.Error(w, "Falha ao serializar o json", http.StatusInternalServerError)
 		return
+	}
+
+	err = saveDb(cambio)
+
+	if err != nil {
+		log.Printf("Erro ao salvar os dados no banco: %v", err)
+		http.Error(w, "Erro ao salvar os dados no banco", http.StatusInternalServerError)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -85,4 +100,25 @@ func BuscaCambio() (*Cambio, error) {
 	log.Println(c.Usdbr)
 	return &c, nil
 
+}
+
+func saveDb(cambio *Cambio) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	db, err := sql.Open("sqlite3", "./cotacao.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	stmt, err := db.Prepare("insert into cotacao(value) values(?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, cambio.Usdbr.Bid)
+	if err != nil {
+		return err
+	}
+	return nil
 }
