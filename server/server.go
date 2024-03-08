@@ -32,7 +32,7 @@ type USDBRL struct {
 }
 
 func main() {
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/cotacao", handler)
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -111,12 +111,12 @@ func saveDb(cambio *Cambio) error {
 	}
 	defer db.Close()
 
-	stmt, err := db.Prepare("insert into cotacao(value) values(?)")
+	stmt, err := db.Prepare("insert into cotacao(bid, create_date) values(?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, cambio.Usdbr.Bid)
+	_, err = stmt.ExecContext(ctx, cambio.Usdbr.Bid, cambio.Usdbr.Createdate)
 	if err != nil {
 		return err
 	}
